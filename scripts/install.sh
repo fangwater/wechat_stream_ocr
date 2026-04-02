@@ -8,8 +8,132 @@ VENV_DIR="$ROOT_DIR/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 INSTALL_MODE="${1:-auto}"
 PM2_HOME="$ROOT_DIR/run/.pm2"
+GET_PIP_URL="${GET_PIP_URL:-https://mirrors.aliyun.com/pypi/get-pip.py}"
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}"
+PIP_TRUSTED_HOST="${PIP_TRUSTED_HOST:-mirrors.aliyun.com}"
+MINIFORGE_DIR="${MINIFORGE_DIR:-$HOME/.local/miniforge3}"
+MINIFORGE_MIRROR_BASE_URL="${MINIFORGE_MIRROR_BASE_URL:-https://mirrors.tuna.tsinghua.edu.cn/github-release/conda-forge/miniforge/LatestRelease}"
+MIN_PYTHON_MAJOR=3
+MIN_PYTHON_MINOR=11
 
 cd "$ROOT_DIR"
+
+PIP_INSTALL_ARGS=(
+    -i "$PIP_INDEX_URL"
+    --trusted-host "$PIP_TRUSTED_HOST"
+)
+
+python_meets_requirement() {
+    local python_bin="$1"
+    "$python_bin" - <<'PY' >/dev/null 2>&1
+import sys
+raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
+PY
+}
+
+download_file() {
+    local url="$1"
+    local output="$2"
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fL "$url" -o "$output"
+        return 0
+    fi
+
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$output" "$url"
+        return 0
+    fi
+
+    echo "neither curl nor wget is available for downloading $url" >&2
+    exit 1
+}
+
+bootstrap_user_python() {
+    local os_name arch_name installer_name installer_path installer_args=()
+
+    if [[ -x "$MINIFORGE_DIR/bin/python" ]] && python_meets_requirement "$MINIFORGE_DIR/bin/python"; then
+        PYTHON_BIN="$MINIFORGE_DIR/bin/python"
+        return 0
+    fi
+
+    case "$(uname -s)" in
+        Linux)
+            os_name="Linux"
+            ;;
+        Darwin)
+            os_name="MacOSX"
+            ;;
+        *)
+            echo "unsupported operating system for automatic Miniforge bootstrap: $(uname -s)" >&2
+            exit 1
+            ;;
+    esac
+
+    case "$(uname -m)" in
+        x86_64|amd64)
+            arch_name="x86_64"
+            ;;
+        aarch64|arm64)
+            arch_name="aarch64"
+            if [[ "$os_name" == "MacOSX" ]]; then
+                arch_name="arm64"
+            fi
+            ;;
+        ppc64le)
+            arch_name="ppc64le"
+            ;;
+        *)
+            echo "unsupported architecture for automatic Miniforge bootstrap: $(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+
+    installer_name="Miniforge3-${os_name}-${arch_name}.sh"
+    installer_path="$(mktemp)"
+
+    echo "python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ is required, bootstrapping user-scoped Miniforge from mirror" >&2
+    download_file "$MINIFORGE_MIRROR_BASE_URL/$installer_name" "$installer_path"
+
+    if [[ -d "$MINIFORGE_DIR" ]]; then
+        installer_args=(-u)
+    fi
+
+    bash "$installer_path" -b "${installer_args[@]}" -p "$MINIFORGE_DIR"
+    rm -f "$installer_path"
+
+    PYTHON_BIN="$MINIFORGE_DIR/bin/python"
+    if ! python_meets_requirement "$PYTHON_BIN"; then
+        echo "bootstrapped Miniforge python does not satisfy python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ requirement" >&2
+        exit 1
+    fi
+}
+
+ensure_supported_python() {
+    if python_meets_requirement "$PYTHON_BIN"; then
+        return 0
+    fi
+
+    bootstrap_user_python
+}
+
+bootstrap_host_pip() {
+    if "$PYTHON_BIN" -m pip --version >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if "$PYTHON_BIN" -m ensurepip --upgrade --user >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local get_pip_script
+    get_pip_script="$(mktemp)"
+
+    download_file "$GET_PIP_URL" "$get_pip_script"
+
+    "$PYTHON_BIN" "$get_pip_script" --user -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
+    rm -f "$get_pip_script"
+}
 
 create_virtualenv() {
     if "$PYTHON_BIN" -m venv "$VENV_DIR"; then
@@ -17,6 +141,7 @@ create_virtualenv() {
     fi
 
     echo "python3 -m venv failed, trying user-scoped virtualenv bootstrap" >&2
+    bootstrap_host_pip
     "$PYTHON_BIN" -m pip install --user virtualenv
     "$PYTHON_BIN" -m virtualenv "$VENV_DIR"
 }
@@ -32,9 +157,17 @@ bootstrap_venv_pip() {
 
     echo "venv exists but pip is unavailable, recreating it via user-scoped virtualenv" >&2
     rm -rf "$VENV_DIR"
+    bootstrap_host_pip
     "$PYTHON_BIN" -m pip install --user virtualenv
     "$PYTHON_BIN" -m virtualenv "$VENV_DIR"
 }
+
+ensure_supported_python
+
+if [[ -x "$VENV_PYTHON" ]] && ! python_meets_requirement "$VENV_PYTHON"; then
+    echo "existing venv uses unsupported Python, recreating it with $PYTHON_BIN" >&2
+    rm -rf "$VENV_DIR"
+fi
 
 if [[ ! -x "$VENV_PYTHON" ]]; then
     create_virtualenv
@@ -42,8 +175,8 @@ fi
 
 bootstrap_venv_pip
 
-"$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
-"$VENV_PYTHON" -m pip install -e .
+"$VENV_PYTHON" -m pip install "${PIP_INSTALL_ARGS[@]}" --upgrade pip setuptools wheel
+"$VENV_PYTHON" -m pip install "${PIP_INSTALL_ARGS[@]}" -e .
 
 detect_paddle_package() {
     if ! command -v nvidia-smi >/dev/null 2>&1; then
@@ -106,7 +239,7 @@ case "$INSTALL_MODE" in
 esac
 
 echo "Installing OCR runtime package: $PADDLE_PACKAGE"
-"$VENV_PYTHON" -m pip install "$PADDLE_PACKAGE" paddleocr "paddlex[ocr]"
+"$VENV_PYTHON" -m pip install "${PIP_INSTALL_ARGS[@]}" "$PADDLE_PACKAGE" paddleocr "paddlex[ocr]"
 
 if ! command -v npm >/dev/null 2>&1; then
     echo "npm is required to install local pm2 tooling" >&2
