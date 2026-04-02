@@ -2,9 +2,16 @@
 
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZMQ_CONNECT="${WSOCR_ZMQ_CONNECT:-tcp://127.0.0.1:5556}"
 ZMQ_TOPIC="${WSOCR_ZMQ_TOPIC:-wechat.chat}"
-PYTHON_BIN="/usr/bin/python3"
+PYTHON_BIN="$ROOT_DIR/.venv/bin/python"
+
+if [[ ! -x "$PYTHON_BIN" ]]; then
+    echo "python virtualenv not found at $PYTHON_BIN" >&2
+    echo "run ./scripts/install.sh first" >&2
+    exit 1
+fi
 
 exec "$PYTHON_BIN" -c '
 import os
