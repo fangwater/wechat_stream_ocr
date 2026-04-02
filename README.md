@@ -260,6 +260,8 @@ ZeroMQ PUB 发布
 - 检测到可安全匹配的 GPU 环境时优先安装 GPU 版 Paddle
 - 否则自动回退安装 CPU 版 Paddle
 - 如果目标机缺少 `python3-venv/ensurepip`，脚本会自动尝试 `python3 -m pip install --user virtualenv` 再创建 `.venv`
+- 使用项目内的 `npm install` 安装本地 `pm2`
+- 通过 `npx pm2 install pm2-logrotate` 配置日志轮转，不依赖全局安装和 `root`
 
 也可以显式指定：
 
@@ -276,6 +278,10 @@ python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip setuptools wheel
 .venv/bin/python -m pip install -e .
 .venv/bin/python -m pip install paddlepaddle paddleocr "paddlex[ocr]"
+npm install
+PM2_HOME=./run/.pm2 npx pm2 install pm2-logrotate
+PM2_HOME=./run/.pm2 npx pm2 set pm2-logrotate:retain 1
+PM2_HOME=./run/.pm2 npx pm2 set pm2-logrotate:rotateInterval '0 0 * * *'
 ```
 
 如果标准库 `venv` 不可用，安装脚本会自动退化为：
@@ -287,7 +293,7 @@ python3 -m virtualenv .venv
 
 ## 运行
 
-默认通过脚本启动：
+默认通过脚本启动，本地 `pm2` 状态保存在 `run/.pm2`，应用日志保存在 `run/logs/`：
 
 - WebSocket 地址：`ws://0.0.0.0:8765`
 - ZeroMQ `PUB` 地址：`tcp://127.0.0.1:5556`
@@ -312,6 +318,25 @@ python3 -m virtualenv .venv
 ```bash
 ./scripts/logs.sh
 ```
+
+底层等价于：
+
+```bash
+PM2_HOME=./run/.pm2 npx pm2 startOrRestart ecosystem.config.js --only wechat-stream-ocr --update-env
+PM2_HOME=./run/.pm2 npx pm2 logs wechat-stream-ocr
+PM2_HOME=./run/.pm2 npx pm2 delete wechat-stream-ocr
+```
+
+日志轮转策略：
+
+- 使用 `pm2-logrotate`
+- 每天 `00:00` 强制轮转一次
+- `retain=1`，只保留 1 份已轮转日志
+- `compress=true`，已轮转日志会压缩
+- `max_size=10M`，单个活跃日志超过阈值也会提前轮转
+
+注意：`pm2-logrotate` 的保留语义是“保留多少个已轮转文件”，不是精确按日志年龄删除。
+当前配置的实际效果是：始终保留当前正在写入的日志文件，以及最多 1 份历史轮转文件。配合每日午夜轮转，通常就是“今天的当前日志 + 昨天的归档日志”。
 
 如果要临时覆盖监听地址或日志级别，可以在启动前设置环境变量：
 

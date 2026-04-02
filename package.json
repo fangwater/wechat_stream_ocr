@@ -1,0 +1,9 @@
+{
+  "name": "wechat-stream-ocr-ops",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local PM2 tooling for wechat-stream-ocr",
+  "dependencies": {
+    "pm2": "^6.0.14"
+  }
+}

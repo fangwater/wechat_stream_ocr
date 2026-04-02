@@ -2,21 +2,15 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RUN_DIR="$ROOT_DIR/run"
-PID_FILE="$RUN_DIR/wechat_stream_ocr.pid"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-if [[ ! -f "$PID_FILE" ]]; then
-    echo "wechat_stream_ocr is not running"
+ensure_runtime_dirs
+ensure_pm2_installed
+
+if ! pm2_cmd describe "$APP_NAME" >/dev/null 2>&1; then
+    echo "$APP_NAME is not running"
     exit 0
 fi
 
-PID="$(cat "$PID_FILE")"
-if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID"
-    echo "stopped wechat_stream_ocr pid=$PID"
-else
-    echo "stale pid file removed"
-fi
-
-rm -f "$PID_FILE"
+pm2_cmd delete "$APP_NAME" >/dev/null
+echo "stopped $APP_NAME"

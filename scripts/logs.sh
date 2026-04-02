@@ -2,10 +2,9 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG_FILE="$ROOT_DIR/run/wechat_stream_ocr.log"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-mkdir -p "$(dirname "$LOG_FILE")"
-touch "$LOG_FILE"
+ensure_runtime_dirs
+ensure_pm2_installed
 
-tail -f "$LOG_FILE"
+PM2_HOME="$PM2_HOME" exec npx --no-install pm2 logs "$APP_NAME" "$@"

@@ -7,6 +7,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="$ROOT_DIR/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 INSTALL_MODE="${1:-auto}"
+PM2_HOME="$ROOT_DIR/run/.pm2"
 
 cd "$ROOT_DIR"
 
@@ -89,3 +90,21 @@ esac
 
 echo "Installing OCR runtime package: $PADDLE_PACKAGE"
 "$VENV_PYTHON" -m pip install "$PADDLE_PACKAGE" paddleocr "paddlex[ocr]"
+
+if ! command -v npm >/dev/null 2>&1; then
+    echo "npm is required to install local pm2 tooling" >&2
+    exit 1
+fi
+
+mkdir -p "$ROOT_DIR/run/logs" "$PM2_HOME"
+
+npm install
+
+PM2_HOME="$PM2_HOME" npx --no-install pm2 describe pm2-logrotate >/dev/null 2>&1 || \
+    PM2_HOME="$PM2_HOME" npx --no-install pm2 install pm2-logrotate
+
+PM2_HOME="$PM2_HOME" npx --no-install pm2 set pm2-logrotate:retain 1
+PM2_HOME="$PM2_HOME" npx --no-install pm2 set pm2-logrotate:compress true
+PM2_HOME="$PM2_HOME" npx --no-install pm2 set pm2-logrotate:max_size 10M
+PM2_HOME="$PM2_HOME" npx --no-install pm2 set pm2-logrotate:workerInterval 30
+PM2_HOME="$PM2_HOME" npx --no-install pm2 set pm2-logrotate:rotateInterval '0 0 * * *'
