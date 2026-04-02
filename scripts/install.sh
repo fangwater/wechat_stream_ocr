@@ -193,6 +193,10 @@ detect_paddle_package() {
             echo "paddlepaddle-gpu|$PADDLE_STABLE_BASE_URL/cu118/"
             return 0
             ;;
+        12.0*|12.1*|12.2*|12.3*|12.4*|12.5*)
+            echo "paddlepaddle-gpu|$PADDLE_STABLE_BASE_URL/cu118/"
+            return 0
+            ;;
         12.6*|12.7*|12.8*)
             echo "paddlepaddle-gpu|$PADDLE_STABLE_BASE_URL/cu126/"
             return 0

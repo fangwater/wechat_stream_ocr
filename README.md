@@ -264,7 +264,8 @@ ZeroMQ PUB 发布
 - 如果目标机缺少 `python3-venv/ensurepip`，脚本会自动尝试 `python3 -m pip install --user virtualenv` 再创建 `.venv`
 - 如果 `.venv` 已经存在但里面没有 `pip`，脚本会先尝试 `ensurepip` 补齐；失败时会回退为用户态 `virtualenv` 重建
 - `pip install` 默认使用镜像源
-- 安装 GPU 版 Paddle 时，脚本会按 `nvidia-smi` 的 CUDA 版本切到 Paddle 官方 `cu118/cu126/cu129` 专用源，而不是通用 PyPI 镜像
+- 安装 GPU 版 Paddle 时，脚本会按 `nvidia-smi` 的 CUDA 版本切到 Paddle 官方 `cu118/cu126/cu129/cu130` 专用源，而不是通用 PyPI 镜像
+- 当前脚本将 `CUDA 12.0-12.5` 固定映射到 `cu118`，用于覆盖像 `CUDA 12.2` 这类 Paddle 官方未单列专用源、但驱动通常可兼容运行 `cu118` 轮子的机器
 - 使用项目内的 `npm install` 安装本地 `pm2`
 - 通过 `npx pm2 install pm2-logrotate` 配置日志轮转，不依赖全局安装和 `root`
 
