@@ -21,9 +21,26 @@ create_virtualenv() {
     "$PYTHON_BIN" -m virtualenv "$VENV_DIR"
 }
 
+bootstrap_venv_pip() {
+    if "$VENV_PYTHON" -m pip --version >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if "$VENV_PYTHON" -m ensurepip --upgrade >/dev/null 2>&1; then
+        return 0
+    fi
+
+    echo "venv exists but pip is unavailable, recreating it via user-scoped virtualenv" >&2
+    rm -rf "$VENV_DIR"
+    "$PYTHON_BIN" -m pip install --user virtualenv
+    "$PYTHON_BIN" -m virtualenv "$VENV_DIR"
+}
+
 if [[ ! -x "$VENV_PYTHON" ]]; then
     create_virtualenv
 fi
+
+bootstrap_venv_pip
 
 "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
 "$VENV_PYTHON" -m pip install -e .

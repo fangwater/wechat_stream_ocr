@@ -260,6 +260,7 @@ ZeroMQ PUB 发布
 - 检测到可安全匹配的 GPU 环境时优先安装 GPU 版 Paddle
 - 否则自动回退安装 CPU 版 Paddle
 - 如果目标机缺少 `python3-venv/ensurepip`，脚本会自动尝试 `python3 -m pip install --user virtualenv` 再创建 `.venv`
+- 如果 `.venv` 已经存在但里面没有 `pip`，脚本会先尝试 `ensurepip` 补齐；失败时会回退为用户态 `virtualenv` 重建
 - 使用项目内的 `npm install` 安装本地 `pm2`
 - 通过 `npx pm2 install pm2-logrotate` 配置日志轮转，不依赖全局安装和 `root`
 
