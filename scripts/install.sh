@@ -13,6 +13,8 @@ PIP_INDEX_URL="${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}"
 PIP_TRUSTED_HOST="${PIP_TRUSTED_HOST:-mirrors.aliyun.com}"
 MINICONDA_DIR="${MINICONDA_DIR:-$HOME/.local/miniconda3}"
 MINICONDA_MIRROR_BASE_URL="${MINICONDA_MIRROR_BASE_URL:-https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda}"
+PADDLE_PACKAGE_VERSION="${PADDLE_PACKAGE_VERSION:-3.3.0}"
+PADDLE_STABLE_BASE_URL="${PADDLE_STABLE_BASE_URL:-https://www.paddlepaddle.org.cn/packages/stable}"
 MIN_PYTHON_MAJOR=3
 MIN_PYTHON_MINOR=11
 
@@ -188,15 +190,15 @@ detect_paddle_package() {
     cuda_version="$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: \([0-9.]\+\).*/\1/p' | head -n 1)"
     case "$cuda_version" in
         11.8*)
-            echo "paddlepaddle-gpu"
+            echo "paddlepaddle-gpu|$PADDLE_STABLE_BASE_URL/cu118/"
             return 0
             ;;
         12.6*|12.7*|12.8*)
-            echo "paddlepaddle-gpu"
+            echo "paddlepaddle-gpu|$PADDLE_STABLE_BASE_URL/cu126/"
             return 0
             ;;
         12.9*|13.0*)
-            echo "paddlepaddle-gpu"
+            echo "paddlepaddle-gpu|$PADDLE_STABLE_BASE_URL/cu129/"
             return 0
             ;;
         "")
@@ -211,6 +213,7 @@ detect_paddle_package() {
 }
 
 PADDLE_PACKAGE="paddlepaddle"
+PADDLE_PACKAGE_INDEX_URL=""
 case "$INSTALL_MODE" in
     cpu)
         PADDLE_PACKAGE="paddlepaddle"
@@ -227,10 +230,17 @@ case "$INSTALL_MODE" in
             echo "Install the matching paddlepaddle-gpu wheel manually based on the official matrix" >&2
             exit 1
         fi
-        PADDLE_PACKAGE="$DETECTED_PACKAGE"
+        PADDLE_PACKAGE="${DETECTED_PACKAGE%%|*}"
+        if [[ "$DETECTED_PACKAGE" == *"|"* ]]; then
+            PADDLE_PACKAGE_INDEX_URL="${DETECTED_PACKAGE#*|}"
+        fi
         ;;
     auto)
-        PADDLE_PACKAGE="$(detect_paddle_package)"
+        DETECTED_PACKAGE="$(detect_paddle_package)"
+        PADDLE_PACKAGE="${DETECTED_PACKAGE%%|*}"
+        if [[ "$DETECTED_PACKAGE" == *"|"* ]]; then
+            PADDLE_PACKAGE_INDEX_URL="${DETECTED_PACKAGE#*|}"
+        fi
         ;;
     *)
         echo "usage: $0 [auto|cpu|gpu]" >&2
@@ -238,8 +248,16 @@ case "$INSTALL_MODE" in
         ;;
 esac
 
-echo "Installing OCR runtime package: $PADDLE_PACKAGE"
-"$VENV_PYTHON" -m pip install "${PIP_INSTALL_ARGS[@]}" "$PADDLE_PACKAGE" paddleocr "paddlex[ocr]"
+if [[ "$PADDLE_PACKAGE" == "paddlepaddle-gpu" ]]; then
+    echo "Installing OCR runtime package: $PADDLE_PACKAGE==$PADDLE_PACKAGE_VERSION from $PADDLE_PACKAGE_INDEX_URL"
+    "$VENV_PYTHON" -m pip install \
+        --index-url "$PADDLE_PACKAGE_INDEX_URL" \
+        "paddlepaddle-gpu==$PADDLE_PACKAGE_VERSION"
+    "$VENV_PYTHON" -m pip install "${PIP_INSTALL_ARGS[@]}" paddleocr "paddlex[ocr]"
+else
+    echo "Installing OCR runtime package: $PADDLE_PACKAGE"
+    "$VENV_PYTHON" -m pip install "${PIP_INSTALL_ARGS[@]}" "$PADDLE_PACKAGE" paddleocr "paddlex[ocr]"
+fi
 
 if ! command -v npm >/dev/null 2>&1; then
     echo "npm is required to install local pm2 tooling" >&2
