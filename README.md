@@ -257,7 +257,7 @@ ZeroMQ PUB 发布
 
 这个脚本会在项目目录创建 `.venv`，并把项目依赖和 OCR 依赖安装到虚拟环境中，不依赖 `sudo`。默认行为是：
 
-- 如果当前 `PYTHON_BIN` 低于 `3.11`，脚本会自动从镜像安装用户态 `Miniforge3`，并改用其中的 `python`
+- 如果当前 `PYTHON_BIN` 低于 `3.11`，脚本会自动从镜像安装用户态 `Miniconda3`，并改用其中的 `python`
 - 检测到可安全匹配的 GPU 环境时优先安装 GPU 版 Paddle
 - 否则自动回退安装 CPU 版 Paddle
 - 如果宿主机 `python3` 没有 `pip`，脚本会先尝试 `ensurepip --user`，再自动使用镜像 `get-pip.py` 补齐用户态 `pip`
@@ -303,11 +303,11 @@ export PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
 export PIP_TRUSTED_HOST=mirrors.aliyun.com
 ```
 
-如果当前机器没有可用的 Python `3.11+`，脚本默认会从清华镜像安装用户态 `Miniforge3`：
+如果当前机器没有可用的 Python `3.11+`，脚本默认会从清华镜像安装用户态 `Miniconda3`：
 
 ```bash
-export MINIFORGE_DIR="$HOME/.local/miniforge3"
-export MINIFORGE_MIRROR_BASE_URL=https://mirrors.tuna.tsinghua.edu.cn/github-release/conda-forge/miniforge/LatestRelease
+export MINICONDA_DIR="$HOME/.local/miniconda3"
+export MINICONDA_MIRROR_BASE_URL=https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda
 ```
 
 ## 运行

@@ -11,8 +11,8 @@ PM2_HOME="$ROOT_DIR/run/.pm2"
 GET_PIP_URL="${GET_PIP_URL:-https://mirrors.aliyun.com/pypi/get-pip.py}"
 PIP_INDEX_URL="${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}"
 PIP_TRUSTED_HOST="${PIP_TRUSTED_HOST:-mirrors.aliyun.com}"
-MINIFORGE_DIR="${MINIFORGE_DIR:-$HOME/.local/miniforge3}"
-MINIFORGE_MIRROR_BASE_URL="${MINIFORGE_MIRROR_BASE_URL:-https://mirrors.tuna.tsinghua.edu.cn/github-release/conda-forge/miniforge/LatestRelease}"
+MINICONDA_DIR="${MINICONDA_DIR:-$HOME/.local/miniconda3}"
+MINICONDA_MIRROR_BASE_URL="${MINICONDA_MIRROR_BASE_URL:-https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda}"
 MIN_PYTHON_MAJOR=3
 MIN_PYTHON_MINOR=11
 
@@ -52,8 +52,8 @@ download_file() {
 bootstrap_user_python() {
     local os_name arch_name installer_name installer_path installer_args=()
 
-    if [[ -x "$MINIFORGE_DIR/bin/python" ]] && python_meets_requirement "$MINIFORGE_DIR/bin/python"; then
-        PYTHON_BIN="$MINIFORGE_DIR/bin/python"
+    if [[ -x "$MINICONDA_DIR/bin/python" ]] && python_meets_requirement "$MINICONDA_DIR/bin/python"; then
+        PYTHON_BIN="$MINICONDA_DIR/bin/python"
         return 0
     fi
 
@@ -89,22 +89,22 @@ bootstrap_user_python() {
             ;;
     esac
 
-    installer_name="Miniforge3-${os_name}-${arch_name}.sh"
+    installer_name="Miniconda3-latest-${os_name}-${arch_name}.sh"
     installer_path="$(mktemp)"
 
-    echo "python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ is required, bootstrapping user-scoped Miniforge from mirror" >&2
-    download_file "$MINIFORGE_MIRROR_BASE_URL/$installer_name" "$installer_path"
+    echo "python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ is required, bootstrapping user-scoped Miniconda from mirror" >&2
+    download_file "$MINICONDA_MIRROR_BASE_URL/$installer_name" "$installer_path"
 
-    if [[ -d "$MINIFORGE_DIR" ]]; then
+    if [[ -d "$MINICONDA_DIR" ]]; then
         installer_args=(-u)
     fi
 
-    bash "$installer_path" -b "${installer_args[@]}" -p "$MINIFORGE_DIR"
+    bash "$installer_path" -b "${installer_args[@]}" -p "$MINICONDA_DIR"
     rm -f "$installer_path"
 
-    PYTHON_BIN="$MINIFORGE_DIR/bin/python"
+    PYTHON_BIN="$MINICONDA_DIR/bin/python"
     if ! python_meets_requirement "$PYTHON_BIN"; then
-        echo "bootstrapped Miniforge python does not satisfy python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ requirement" >&2
+        echo "bootstrapped Miniconda python does not satisfy python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ requirement" >&2
         exit 1
     fi
 }
