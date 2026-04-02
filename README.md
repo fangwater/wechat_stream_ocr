@@ -259,6 +259,7 @@ ZeroMQ PUB 发布
 
 - 检测到可安全匹配的 GPU 环境时优先安装 GPU 版 Paddle
 - 否则自动回退安装 CPU 版 Paddle
+- 如果目标机缺少 `python3-venv/ensurepip`，脚本会自动尝试 `python3 -m pip install --user virtualenv` 再创建 `.venv`
 
 也可以显式指定：
 
@@ -275,6 +276,13 @@ python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip setuptools wheel
 .venv/bin/python -m pip install -e .
 .venv/bin/python -m pip install paddlepaddle paddleocr "paddlex[ocr]"
+```
+
+如果标准库 `venv` 不可用，安装脚本会自动退化为：
+
+```bash
+python3 -m pip install --user virtualenv
+python3 -m virtualenv .venv
 ```
 
 ## 运行

@@ -10,8 +10,18 @@ INSTALL_MODE="${1:-auto}"
 
 cd "$ROOT_DIR"
 
+create_virtualenv() {
+    if "$PYTHON_BIN" -m venv "$VENV_DIR"; then
+        return 0
+    fi
+
+    echo "python3 -m venv failed, trying user-scoped virtualenv bootstrap" >&2
+    "$PYTHON_BIN" -m pip install --user virtualenv
+    "$PYTHON_BIN" -m virtualenv "$VENV_DIR"
+}
+
 if [[ ! -x "$VENV_PYTHON" ]]; then
-    "$PYTHON_BIN" -m venv "$VENV_DIR"
+    create_virtualenv
 fi
 
 "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
